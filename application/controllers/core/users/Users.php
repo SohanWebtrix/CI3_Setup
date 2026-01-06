@@ -37,35 +37,38 @@ class Users extends CI_Controller
     {
         parent::__construct();
         $this->load->database();
-        $this->load->helper('form');
-        $this->load->model('SearchAdminModel');
+        $this->load->helper('form'); 
+        $this->load->model('SearchAdminModel'); 
         $this->load->model('CommonModel');
-        $this->load->model('LoginModel');
-        $this->load->library("pagination");
+        $this->load->model('LoginModel'); 
+        $this->load->library("pagination"); 
         
         $this->load->helper(['url','security']);
         $this->load->model('core/CommonModelNew');
         $this->Model = $this->CommonModelNew;
-        $this->load->library("ValidateData");
+        $this->load->library("ValidateData"); 
         $this->load->library('core/FilterEngine', [], 'filterengine');
         $this->load->library('core/FilterBuilder', [], 'filterbuilder');
-        // $this->load->library('Filters',['customCol' => $this->customCol,'columnNames'=>$this->columnNames], 'filters');
+        $this->load->library('Filters',['customCol' => $this->customCol,'columnNames'=>$this->columnNames], 'filters');
         if (!$this->config->item('development')) {
             // $this->load->library("Emails");
         }
+
+        //  $this->load->library('Response');
+    // $this->load->library('Access'); 
         // $this->load->library("Datatables");
-        // $this->load->library("Filters");
+        $this->load->library("Filters");
     }
 
      public function list()
     {
-        // $this->access->checkTokenKey();
+        $this->access->checkTokenKey();
         $payload = json_decode($this->input->raw_input_stream, true);
         if (!is_array($payload)) $payload = $this->input->post() ?: [];
 
-        
 
-        $menuId = (int)($payload['menuId'] ?? 1);
+        $menuId = (int)($payload['menuId'] ?? 0);
+        
         if ($menuId <= 0) {
             $this->response->output(['flag'=>'F','msg'=>'menuId is required','statusCode'=>422], 200);
             return;
@@ -76,6 +79,9 @@ class Users extends CI_Controller
         if (!$userId) $userId = $payload['SadminID'] ?? $this->input->post('SadminID');
 
         // Menu meta + PK
+        
+        log_message('error', 'Calling getMenuMeta with menuId = '.$menuId);
+
         $menuMeta = $this->Model->getMenuMeta($menuId);
         if (!$menuMeta) {
             $this->response->output(['flag'=>'F','msg'=>'Invalid menu','statusCode'=>422], 200);

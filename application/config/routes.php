@@ -60,3 +60,5 @@ $route['user/(:num)'] = 'core/users/Users/userDetails/$1';
 $route['changePassword'] = 'core/users/Users/confirm_password/';
 $route['user/add'] = 'core/users/Users/userDetails';
 $route['user/edit/(:num)'] = 'core/users/Users/userDetails/$1';
+
+
