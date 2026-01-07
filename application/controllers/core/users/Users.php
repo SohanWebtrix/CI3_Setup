@@ -67,7 +67,7 @@ class Users extends CI_Controller
         if (!is_array($payload)) $payload = $this->input->post() ?: [];
 
 
-        $menuId = (int)($payload['menuId'] ?? 0);
+        $menuId = (int)($payload['menuId'] ?? 111);
         
         if ($menuId <= 0) {
             $this->response->output(['flag'=>'F','msg'=>'menuId is required','statusCode'=>422], 200);
