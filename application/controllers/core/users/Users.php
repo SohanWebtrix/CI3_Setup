@@ -22,55 +22,56 @@ class Users extends CI_Controller
     public $fromEmail = null;
     public $fromName = null;
     protected $columnNames = [
-    "roleID" => ["table" => "user_role_master", "alias" => "r", "column" => "roleName", "key2" => "roleID", "select" => "t.roleID as roleID, r.roleName as roleName"],
+        "roleID" => ["table" => "user_role_master", "alias" => "r", "column" => "roleName", "key2" => "roleID", "select" => "t.roleID as roleID, r.roleName as roleName"],
     ];
 
     protected $customCol = [
         "default_company" => ["table" => "info_settings", "alias" => "dc", "column" => "companyName", "key2" => "infoID", "select" => ""],
-            "modified_by" => ["table" => "admin", "alias" => "am", "column" => "name", "key2" => "adminID", "select" => ""],
-            "created_by" => ["table" => "admin", "alias" => "ad", "column" => "name", "key2" => "adminID", "select" => ""],
+        "modified_by" => ["table" => "admin", "alias" => "am", "column" => "name", "key2" => "adminID", "select" => ""],
+        "created_by" => ["table" => "admin", "alias" => "ad", "column" => "name", "key2" => "adminID", "select" => ""],
     ];
     protected $Model;
     public $menuID;
-    var $defaultColumns=["name","adminID","email"];
+    var $defaultColumns = ["name", "adminID", "email"];
     public function __construct()
     {
         parent::__construct();
         $this->load->database();
-        $this->load->helper('form'); 
-        $this->load->model('SearchAdminModel'); 
+        $this->load->helper('form');
+        $this->load->model('SearchAdminModel');
         $this->load->model('CommonModel');
-        $this->load->model('LoginModel'); 
-        $this->load->library("pagination"); 
-        
-        $this->load->helper(['url','security']);
+        $this->load->model('LoginModel');
+        $this->load->library("pagination");
+
+        $this->load->helper(['url', 'security']);
         $this->load->model('core/CommonModelNew');
         $this->Model = $this->CommonModelNew;
-        $this->load->library("ValidateData"); 
+        $this->load->library("ValidateData");
         $this->load->library('core/FilterEngine', [], 'filterengine');
         $this->load->library('core/FilterBuilder', [], 'filterbuilder');
-        $this->load->library('Filters',['customCol' => $this->customCol,'columnNames'=>$this->columnNames], 'filters');
+        $this->load->library('Filters', ['customCol' => $this->customCol, 'columnNames' => $this->columnNames], 'filters');
         if (!$this->config->item('development')) {
             // $this->load->library("Emails");
         }
 
         //  $this->load->library('Response');
-    // $this->load->library('Access'); 
+        // $this->load->library('Access'); 
         // $this->load->library("Datatables");
         $this->load->library("Filters");
     }
 
-     public function list()
+
+    public function list()
     {
-        $this->access->checkTokenKey();
+        //$this->access->checkTokenKey();
         $payload = json_decode($this->input->raw_input_stream, true);
         if (!is_array($payload)) $payload = $this->input->post() ?: [];
 
+        log_message('error', 'PAYLOAD: ' . print_r($payload, true));
 
-        $menuId = (int)($payload['menuId'] ?? 111);
-        
+        $menuId = (int)($payload['menuId'] ?? 0);
         if ($menuId <= 0) {
-            $this->response->output(['flag'=>'F','msg'=>'menuId is required','statusCode'=>422], 200);
+            $this->response->output(['flag' => 'F', 'msg' => 'menuId is required', 'statusCode' => 422], 200);
             return;
         }
 
@@ -79,74 +80,74 @@ class Users extends CI_Controller
         if (!$userId) $userId = $payload['SadminID'] ?? $this->input->post('SadminID');
 
         // Menu meta + PK
-        
-        log_message('error', 'Calling getMenuMeta with menuId = '.$menuId);
-
         $menuMeta = $this->Model->getMenuMeta($menuId);
         if (!$menuMeta) {
-            $this->response->output(['flag'=>'F','msg'=>'Invalid menu','statusCode'=>422], 200);
+            $this->response->output(['flag' => 'F', 'msg' => 'Invalid menu', 'statusCode' => 422], 200);
             return;
         }
         $pk = $menuMeta['pk'];
 
-        // Get user-selected columns (this will NOT auto-add PK)
-        $columns = $this->Model->getUserSelectedColumns($menuId, (string)$userId);
-
+        // Columns from user settings (fallbacks preserved)
+        $columns = $this->Model->getUserSelectedColumns($menuId, (string)$userId, $pk);
         // CASE 1: If NO columns saved → use payload or default
         if (empty($columns)) {
 
             if (!empty($payload['columns']) && is_array($payload['columns'])) {
                 $columns = $payload['columns'];
 
-                // Ensure PK is included
+                // Ensure PK exists
                 if ($pk && !in_array($pk, $columns, true)) {
                     array_unshift($columns, $pk);
                 }
-
             } else {
-                // Full default
-                $columns = [$pk, 'name','is_sys_user','email', 'status', 'created_date'];
+                // Default full
+                $columns = [$pk];
             }
         }
 
-        // CASE 2: If ONLY the PK exists → treat as empty and load default
-        else if 
-        (count($columns) === 1 && $pk && $columns[0] === $pk) {
-            $columns = [$pk, 'name', 'email','is_sys_user','status', 'created_date'];
+        // CASE 2: Only PK exists → treat as empty and load defaults
+        else if (count($columns) === 1 && $pk && $columns[0] === $pk) {
+            $columns = [$pk];
         }
 
-        // CASE 3: User has saved columns but forgot PK → prepend
-        else 
-            {
+        // CASE 3: User saved columns but forgot PK → prepend
+        else {
             if ($pk && !in_array($pk, $columns, true)) {
                 array_unshift($columns, $pk);
             }
         }
 
 
-        // add default columns
-        $columns[] = "is_sys_user";
+        //'completed_subtask_count','subtask_progress_percent'
+        $required = ['shop_name', 'shop_email', 'shop_owner', 'status', 'created_date'];
+        // Merge in correct order → Required first, then PK, then user columns
+        $columns = array_unique(array_merge($required, $columns));
+
         $filters  = isset($payload['filters']) && is_array($payload['filters']) ? $payload['filters'] : [];
         // Collect overrides from payload
         $overrides = [];
 
-        // overrideFromPayload($overrides, $payload, 'stages', [
-        // 'empty_token' => 'nostatus',
-        // 'cast_ints'   => true,
-        // ]);
+        overrideFromPayload($overrides, $payload, 'task_status', [
+            'empty_token' => 'nostatus',
+            'cast_ints'   => true,
+        ]);
 
         // type, status, company_id behave the same way (reusable!)
-        //overrideFromPayload($overrides, $payload, 'type');
+        overrideFromPayload($overrides, $payload, 'type');
         overrideFromPayload($overrides, $payload, 'status');
+        $overrides['status'] = [
+            'condition' => 'in',
+            'value' => ['active', 'inactive']
+        ];
         overrideFromPayload($overrides, $payload, 'company_id', ['cast_ints' => true]);
-        
+        //print_r($overrides);
         // Apply forced filters
         $filters = $this->filterbuilder->applyOverrideFilters($filters, $overrides);
 
         $freeTxt  = isset($payload['freeTextSearch']) ? trim((string)$payload['freeTextSearch']) : '';
         if (isset($payload['order'], $payload['orderBy'])) {
-            // ensure sort is an array  
-            if(!isset($payload['sort']) || !is_array($payload['sort'])) {
+            // ensure sort is an array
+            if (!isset($payload['sort']) || !is_array($payload['sort'])) {
                 $payload['sort'] = [];
             }
             $payload['sort']['by']  = (string) $payload['orderBy'];
@@ -162,17 +163,16 @@ class Users extends CI_Controller
             ? max(0, (int)$payload['curpage'])                                  // 0,1,2...
             : (isset($payload['page']) ? max(0, (int)$payload['page'] - 1) : 0); // compat for old 1-based 'page'
 
-            
         $limit  = min(200, max(1, (int)($payload['limit'] ?? 20)));
         $offset = $curPageIdx * $limit;
-    
+
         $plan  = $this->filterengine->buildPlan($menuId, $columns, $filters, $freeTxt, $sort, $this->columnNames, $this->customCol);
         $total = $this->Model->countByPlan($plan, $plan['pk']);
         $rows  = $this->Model->listByPlan($plan, $limit, $offset);
 
-            $debugSql = $this->Model->compilePlanSQL($plan);
+        $debugSql = $this->Model->compilePlanSQL($plan);
 
-            //print $debugSql;exit;
+        //print $debugSql;exit;
 
         $totalPages = ($limit > 0) ? (int)ceil($total / $limit) : 1;
         $hasMore    = ($curPageIdx + 1) < $totalPages;
@@ -208,8 +208,10 @@ class Users extends CI_Controller
         $this->response->output($status, 200);
     }
 
-    
-    public function getCompanyDetails($adminID){
+
+    public function getCompanyDetails($adminID)
+
+    {
         if (!isset($this->company_id) && empty($this->company_id)) {
             $defaultCompany = $this->CommonModel->getMasterDetails('admin', 'default_company', array('adminID' => $adminID));
             if (!isset($defaultCompany) && empty($defaultCompany)) {
@@ -219,6 +221,7 @@ class Users extends CI_Controller
                 $status['flag'] = 'F';
                 $this->response->output($status, 200);
             }
+
             $where = array("infoID" => $defaultCompany[0]->default_company);
             $infoData = $this->CommonModel->getMasterDetails('info_settings', '', $where);
             ($infoData[0]->fromEmail != "" || $infoData[0]->fromEmail != null) ? $this->fromEmail = $infoData[0]->fromEmail : $this->fromEmail = $this->config->item('supportEmail');
@@ -227,7 +230,9 @@ class Users extends CI_Controller
             ($this->validateInfoDetails($infoData[0]->companyName, 'companyName')) ? $this->companyName = $infoData[0]->companyName : $this->companyName = '';
         }
     }
-    public function validateInfoDetails($field, $lable){
+    public function validateInfoDetails($field, $lable)
+    {
+
         if (!isset($field) || empty($field)) {
             $status['msg'] = str_replace("{fieldName}", $lable, $this->systemmsg->getErrorCode(335));
             $status['statusCode'] = 335;
@@ -238,16 +243,21 @@ class Users extends CI_Controller
             return true;
         }
     }
-    public function userDetails($adminID = ''){
-        $this->access->checkTokenKey();
+
+    public function userDetails($adminID = '')
+    {
+
+        // $this->access->checkTokenKey();
         $this->response->decodeRequest();
-		$this->menuID = $this->input->post('menuId');
-        if($this->menuID == ""){
+        $this->menuID = $this->input->post('menuId');
+        if ($this->menuID == "") {
             $this->menuID = $this->input->get('menuId');
         }
+
         $method = $this->input->method(true);
         $today = date("Y-m-d");
         if ($method == "POST" || $method == "PUT") {
+
             $adminDetails = $adminEextraDetails = array();
             $updateDate = date("Y/m/d H:i:s");
             $adminDetails['name'] = $this->validatedata->validate('name', 'Admin Name', true, '', array());
@@ -281,7 +291,8 @@ class Users extends CI_Controller
             if (isset($adminDetails['dateOfBirth']) && !empty($adminDetails['dateOfBirth']) && $adminDetails['dateOfBirth'] != "0000-00-00") {
                 $adminDetails['dateOfBirth'] = str_replace("-", "-", $adminDetails['dateOfBirth']);
                 $adminDetails['dateOfBirth'] = date("Y-m-d", strtotime($adminDetails['dateOfBirth']));
-            } else {
+            } 
+            else {
                 $adminDetails['dateOfBirth'] = null;
             }
 
@@ -297,17 +308,18 @@ class Users extends CI_Controller
                 $cmpArr = explode(',', $adminDetails['company_id']);
                 (in_array($this->company_id, $cmpArr)) ? $adminDetails['default_company'] = $this->company_id : $adminDetails['default_company'] = $cmpArr[0];
             }
-			// $menuDetails = $this->datatables->getMenuDetails($this->menuID);
-    		// $fieldData = $this->datatables->mapDynamicFeilds($menuDetails->menuLink, $this->input->post());
+            // $menuDetails = $this->datatables->getMenuDetails($this->menuID);
+            // $fieldData = $this->datatables->mapDynamicFeilds($menuDetails->menuLink, $this->input->post());
             switch ($method) {
-                case "PUT":{
+                case "PUT": {
                         //$adminDetails['password'] = $this->validatedata->validate('password', 'Password', false, '', array());
                         $adminDetails['isVerified'] = 'N';
                         $adminDetails['created_by'] = $this->input->post('SadminID');
                         $this->db->trans_start();
                         $where = array("email" => $adminDetails['email']);
                         $userEmail = $this->CommonModel->getMasterDetails('admin', '', $where);
-                        if(isset($adminDetails['contactNo']) && !empty($adminDetails['contactNo'])){
+                        if (isset($adminDetails['contactNo']) && !empty($adminDetails['contactNo'])) 
+                            {
                             $where1 = array("contactNo" => $adminDetails['contactNo']);
                             $userMobile = $this->CommonModel->getMasterDetails('admin', '', $where1);
                             if (!empty($userMobile)) {
@@ -318,7 +330,7 @@ class Users extends CI_Controller
                                 $this->response->output($status, 200);
                             }
                         }
-                        
+
                         $where2 = array("userName" => $adminDetails['userName']);
                         $db_userName = $this->CommonModel->getMasterDetails('admin', '', $where2);
                         if (!empty($db_userName)) {
@@ -335,24 +347,24 @@ class Users extends CI_Controller
                             $status['flag'] = 'F';
                             $this->response->output($status, 200);
                         }
-                       
-                         $verification_required = $this->validatedata->validate('pass_update_on_reset', 'verification', false, '', array());
-                        if($verification_required == "no"){
-                            $password = $this->validatedata->validate('password','password', true, '', array());
+
+                        $verification_required = $this->validatedata->validate('pass_update_on_reset', 'verification', false, '', array());
+                        if ($verification_required == "no") {
+                            $password = $this->validatedata->validate('password', 'password', true, '', array());
                             $adminDetails['isVerified'] = "Y";
                             $adminDetails['password'] = md5(trim($password));
                         }
                         $iscreated = $this->SearchAdminModel->saveAdminDetails($adminDetails);
                         $last_id = $this->db->insert_id();
                         if (!$iscreated) {
-							$this->db->trans_rollback();
+                            $this->db->trans_rollback();
                             $status['msg'] = $this->systemmsg->getErrorCode(998);
                             $status['statusCode'] = 998;
                             $status['data'] = array();
                             $status['flag'] = 'F';
                             $this->response->output($status, 200);
                         } else {
-                            if($verification_required == "no"){
+                            if ($verification_required == "no") {
                                 $this->db->trans_commit();
                                 $status['msg'] = $this->systemmsg->getSucessCode(400);
                                 $status['statusCode'] = 400;
@@ -362,7 +374,7 @@ class Users extends CI_Controller
                             }
 
                             $adminID = $this->SearchAdminModel->getInsertedID();
-							$verificationCode = md5($adminDetails['otp']);
+                            $verificationCode = md5($adminDetails['otp']);
                             $verificationCode = substr($verificationCode, 0, 10);
                             $this->getCompanyDetails($adminID);
                             $baseURL = $this->config->item("app_url") . "verify-details?&vfcode=" . $verificationCode . "&auth-id=" . $adminID;
@@ -395,7 +407,17 @@ class Users extends CI_Controller
                         }
                         break;
                     }
-                case "POST":{
+                case "POST": {
+
+                        if (empty($adminID)) {
+                            $status['msg'] = 'Admin ID is required for update';
+                            $status['statusCode'] = 400;
+                            $status['data'] = [];
+                            $status['flag'] = 'F';
+                            $this->response->output($status, 200);
+                        }
+
+
                         $updateDate = date("Y/m/d H:i:s");
                         $adminDetails['modified_date'] = $updateDate;
                         $adminDetails['modified_by'] = $this->input->post('SadminID');
@@ -403,8 +425,11 @@ class Users extends CI_Controller
                         $where2 = array("userName" => $adminDetails['userName']);
                         $db_userName = $this->CommonModel->getMasterDetails('admin', '', $where2);
                         $newpass = $this->validatedata->validate('newPassword', 'Password', false, '', array());
-                        
-                        if(isset($newpass) && !empty($newpass)){
+
+                        log_message('error', 'Calling userDetails with adminID = ' . $adminID);
+                        log_message('error', 'UPDATE DATA: ' . print_r($adminDetails, true));
+
+                        if (isset($newpass) && !empty($newpass)) {
                             $adminDetails['password'] = md5(trim($newpass));
                         }
                         // add dynamic feild data
@@ -435,18 +460,19 @@ class Users extends CI_Controller
                                 $this->response->output($status, 200);
                             }
                         }
-						$this->db->trans_start();
+                        $this->db->trans_start();
+
                         $iscreated = $this->SearchAdminModel->updateAdminDetails($adminDetails, $adminID);
                         if (!$iscreated) {
-							$this->db->trans_rollback();
+                            $this->db->trans_rollback();
                             $status['msg'] = $this->systemmsg->getErrorCode(998);
                             $status['statusCode'] = 998;
                             $status['data'] = array();
                             $status['flag'] = 'F';
                             $this->response->output($status, 200);
                         } else {
-							$this->filters->upsertDynamicData($adminID);
-							$this->db->trans_commit();
+                            // $this->filters->upsertDynamicData($adminID);
+                            $this->db->trans_commit();
                             $status['msg'] = $this->systemmsg->getSucessCode(400);
                             $status['statusCode'] = 400;
                             $status['data'] = array();
@@ -455,7 +481,7 @@ class Users extends CI_Controller
                         }
                         break;
                     }
-                default:{
+                default: {
                         break;
                     }
             }
@@ -468,30 +494,30 @@ class Users extends CI_Controller
                 $this->response->output($status, 200);
             }
 
-            $record = $this->filterbuilder->fetchRecordFlat($this->menuID, (int)$adminID, 'labels', true);
+            $record = $this->filterbuilder->fetchRecordFlat($this->menuID, (int)$adminID, 'labels', false);
             //print_r($rec['base']);
             //$status['data'] = [$rec['base'] + ['dynamic' => $rec['dynamicByKey']]]; // flatten for UI
             $status['data'][0] = $record;
-            
+
             $status['msg'] = "";
             $status['statusCode'] = 200;
             //$status['data'] = array();
             $status['flag'] = 'S';
             $this->response->output($status, 200);
 
-			// $this->filters->_initialize('yes');
-			// $wherec = $join = array();
-			// $wherec = $this->whereData["wherec"];
-			// $other = $this->whereData["other"];
-			// $join = $this->whereData["join"];
-			// $selectC = $this->whereData["select"];	
-			// $wherec["t.adminID ="] = "'".$adminID."'";	
-			// if ($selectC != "") {
+            // $this->filters->_initialize('yes');
+            // $wherec = $join = array();
+            // $wherec = $this->whereData["wherec"];
+            // $other = $this->whereData["other"];
+            // $join = $this->whereData["join"];
+            // $selectC = $this->whereData["select"];	
+            // $wherec["t.adminID ="] = "'".$adminID."'";	
+            // if ($selectC != "") {
             //     $selectC = "t.*,r.roleName," . $selectC;
             // } else {
             //     $selectC = "t.*,r.roleName," . $selectC;
             // }
-			// $adminHistory = $this->CommonModel->GetMasterListDetails($selectC, $this->menuDetails->table_name, $wherec, '', '', $join, array());
+            // $adminHistory = $this->CommonModel->GetMasterListDetails($selectC, $this->menuDetails->table_name, $wherec, '', '', $join, array());
             // if (isset($adminHistory[0]->whatsappNo) && !empty($adminHistory[0]->whatsappNo)) {
 
             //     $fullNumber = $adminHistory[0]->whatsappNo;
@@ -545,6 +571,66 @@ class Users extends CI_Controller
             // }
         }
     }
+
+    public function shopDetails()
+    {
+        $this->response->decodeRequest();
+
+        $method = $this->input->method(true);
+
+        // ONLY ADD SHOP
+        if ($method !== 'PUT') {
+            $this->response->output([
+                'msg' => 'Invalid request method',
+                'statusCode' => 405,
+                'data' => [],
+                'flag' => 'F'
+            ], 200);
+        }
+
+        /* ========= VALIDATION ========= */
+
+        $shopData = [];
+        $shopData['shop_name']    = $this->validatedata->validate('shop_name', 'Shop Name', true);
+        $shopData['shop_address'] = $this->validatedata->validate('shop_address', 'Shop Address', true);
+        $shopData['shop_email']   = $this->validatedata->validate('shop_email', 'Shop Email', true);
+        $shopData['shop_owner']   = $this->validatedata->validate('shop_owner', 'Shop Owner', true);
+        $shopData['status']       = $this->validatedata->validate('status', 'Status', false) ?: 'active';
+
+        /* ========= AUDIT ========= */
+
+        $shopData['created_date']  = date('Y-m-d H:i:s');
+        $shopData['created_by']    = $this->input->post('SadminID');
+        $shopData['modified_date'] = date('Y-m-d H:i:s');
+        $shopData['modified_by']   = $this->input->post('SadminID');
+
+        /* ========= INSERT ========= */
+
+        $this->db->trans_start();
+        $this->db->insert('ab_shop', $shopData);
+        $shopID = $this->db->insert_id();
+
+        if (!$shopID) {
+            $this->db->trans_rollback();
+            $this->response->output([
+                'msg' => 'Failed to create shop',
+                'statusCode' => 500,
+                'data' => [],
+                'flag' => 'F'
+            ], 200);
+        }
+
+        $this->db->trans_commit();
+
+        $this->response->output([
+            'msg' => 'Shop created successfully',
+            'statusCode' => 200,
+            'data' => ['shopID' => $shopID],
+            'flag' => 'S'
+        ], 200);
+    }
+
+
     public function confirm_password()
     {
         $this->access->checkTokenKey();
@@ -595,7 +681,7 @@ class Users extends CI_Controller
                     $newPass = md5($newPass);
                     //$newPass = substr($newPass, 0, 30);
                     //if ($newPass != $cNewPass) {
-                        return $newPass;
+                    return $newPass;
                     //}
                 } else {
                     $status['msg'] = $this->systemmsg->getErrorCode(301);
@@ -874,7 +960,6 @@ class Users extends CI_Controller
             // get the crop data for the output image
             $data = $image['input']['data'];
             $input = $this->slim->saveFile($data, $name, $this->config->item("mediaPATH") . 'profilephoto/' . $memberID . '/logo/');
-
         }
 
         $response = array(
@@ -990,7 +1075,6 @@ class Users extends CI_Controller
             // get the crop data for the output image
             $data = $image['input']['data'];
             $input = $this->slim->saveFile($data, $name, $this->config->item("mediaPATH") . 'profilephoto/' . $memberID . '/coverImage/');
-
         }
 
         $response = array(
@@ -1134,7 +1218,6 @@ class Users extends CI_Controller
             // get the crop data for the output image
             $data = $image['input']['data'];
             $input = $this->slim->saveFile($data, $name, $this->config->item("mediaPATH") . 'userGallery/' . $memberID . '/');
-
         }
 
         $response = array(
@@ -1299,7 +1382,7 @@ class Users extends CI_Controller
                     $this->sendFrom = 'updatePassword';
                     if ($isVerified == 'N') {
                         $this->sendEmailsToUser('welcomeToUser', $infoData[0]->email, $infoData[0]->userName, '', $infoData[0]->name);
-                    }else{
+                    } else {
                         $this->sendEmailsToUser('updatePasswordTemp', $infoData[0]->email, $infoData[0]->userName, '', $infoData[0]->name);
                     }
                 }
@@ -1338,7 +1421,7 @@ class Users extends CI_Controller
 
     public function deleteUser()
     {
-        $this->access->checkTokenKey();
+        // $this->access->checkTokenKey();
         $this->response->decodeRequest();
 
         $adminID = $this->input->post('id');
@@ -1356,6 +1439,7 @@ class Users extends CI_Controller
         $this->db->trans_start();
 
         try {
+
             if ($action === 'reassignAndDeactivate') {
                 // Reassign related records and deactivate user
                 //$this->reassignRecords($adminID, $updatedAdmin);
@@ -1519,7 +1603,7 @@ class Users extends CI_Controller
     private function logDeletion($deletedUser, $action, $replacementUser = null)
     {
         $performedBy =  $this->input->post('SadminID');
-        
+
         $logData = [
             'deleted_user_id' => $deletedUser,
             'action' => $action,
@@ -1591,7 +1675,6 @@ class Users extends CI_Controller
                     $status['flag'] = 'F';
                     $this->response->output($status, 200);
                 }
-
             }
         }
     }
@@ -1625,29 +1708,29 @@ class Users extends CI_Controller
         if (isset($tempData) && !empty($tempData)) {
             $mailContent = $tempData[0]->emailContent;
             (strpos($mailContent, "{{userName}}") !== false) ?
-            $mailContent = str_replace("{{userName}}", $userName, $mailContent) :
-            $mailContent = str_replace("{{userName}}", '[data not exists]', $mailContent);
+                $mailContent = str_replace("{{userName}}", $userName, $mailContent) :
+                $mailContent = str_replace("{{userName}}", '[data not exists]', $mailContent);
             (strpos($mailContent, "{{password}}") !== false) ?
-            $mailContent = str_replace("{{password}}", $password, $mailContent) :
-            $mailContent = str_replace("{{password}}", '[data not exists]', $mailContent);
+                $mailContent = str_replace("{{password}}", $password, $mailContent) :
+                $mailContent = str_replace("{{password}}", '[data not exists]', $mailContent);
             (strpos($mailContent, "{{appLink}}") !== false) ?
-            $mailContent = str_replace("{{appLink}}", $appLink, $mailContent) :
-            $mailContent = str_replace("{{appLink}}", '[data not exists]', $mailContent);
+                $mailContent = str_replace("{{appLink}}", $appLink, $mailContent) :
+                $mailContent = str_replace("{{appLink}}", '[data not exists]', $mailContent);
             (strpos($mailContent, "{{name}}") !== false) ?
-            $mailContent = str_replace("{{name}}", $name, $mailContent) :
-            $mailContent = str_replace("{{name}}", '[data not exists]', $mailContent);
+                $mailContent = str_replace("{{name}}", $name, $mailContent) :
+                $mailContent = str_replace("{{name}}", '[data not exists]', $mailContent);
             (strpos($mailContent, "{{oldUserName}}") !== false) ?
-            $mailContent = str_replace("{{oldUserName}}", $oldUserName, $mailContent) :
-            $mailContent = str_replace("{{oldUserName}}", '[data not exists]', $mailContent);
+                $mailContent = str_replace("{{oldUserName}}", $oldUserName, $mailContent) :
+                $mailContent = str_replace("{{oldUserName}}", '[data not exists]', $mailContent);
             (strpos($mailContent, "{{email}}") !== false) ?
-            $mailContent = str_replace("{{email}}", $email, $mailContent) :
-            $mailContent = str_replace("{{email}}", '[data not exists]', $mailContent);
+                $mailContent = str_replace("{{email}}", $email, $mailContent) :
+                $mailContent = str_replace("{{email}}", '[data not exists]', $mailContent);
             (strpos($mailContent, "{{company_name}}") !== false) ?
-            $mailContent = str_replace("{{company_name}}", $this->companyName, $mailContent) :
-            $mailContent = str_replace("{{company_name}}", '[data not exists]', $mailContent);
+                $mailContent = str_replace("{{company_name}}", $this->companyName, $mailContent) :
+                $mailContent = str_replace("{{company_name}}", '[data not exists]', $mailContent);
             (strpos($mailContent, "{{date}}") !== false) ?
-            $mailContent = str_replace("{{date}}", $currentDate, $mailContent) :
-            $mailContent = str_replace("{{date}}", '[data not exists]', $mailContent);
+                $mailContent = str_replace("{{date}}", $currentDate, $mailContent) :
+                $mailContent = str_replace("{{date}}", '[data not exists]', $mailContent);
             $from = $this->fromEmail;
             $to = $email;
             $subject = $tempData[0]->subjectOfEmail;

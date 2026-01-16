@@ -105,6 +105,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	}
 	public function updateAdminDetails($data='',$adminID='')
 	{
+				        log_message('error', 'Calling updateAdminDetails with adminID = '.$adminID);
+
 		$this->db->where("adminID",$adminID);
 		$res = $this->db->update("admin",$data);
 		$sqlerror = $this->db->error();
@@ -121,6 +123,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 	}
 	public function updateAdminExtraDetails($data='',$adminID='')
 	{
+
+
 		$this->db->where("adminID",$adminID);
 		$res = $this->db->update("admin",$data);
 		$sqlerror = $this->db->error();

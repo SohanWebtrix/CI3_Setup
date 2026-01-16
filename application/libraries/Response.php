@@ -24,6 +24,7 @@ class Response
 		$statusMessage = $this->getHttpStatusMessage($statusCode);
 		header($this->httpVersion . " " . $statusCode . " " . $statusMessage);
 		header("Content-Type:" . $contentType);
+		// header("Content-Type: application/json; charset=utf-8");
 	}
 
 	/*
@@ -140,6 +141,7 @@ class Response
 		*/
 	public function decodeRequest($setdata = '', $type = '')
 	{
+		
 		$checkRequestFrom = $this->checkRequestType($this->requestContentType);
 		if (!$checkRequestFrom) {
 			return false;
@@ -150,6 +152,7 @@ class Response
 		} else {
 			$format = $this->outputType;
 		}
+		
 		$this->CI->load->library("outputFormats/" . $format);
 		$this->$format = new $format();
 		return $this->$format->decode($setdata);

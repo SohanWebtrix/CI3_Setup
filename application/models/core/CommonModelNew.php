@@ -221,6 +221,7 @@ public function applyPlanToQB(CI_DB_query_builder $qb, array $plan, $mode = 'lis
 
     // WHERE (raw strings or callables)
     if (!empty($plan['where'])) {
+        
         foreach ($plan['where'] as $w) {
             if (is_callable($w)) {
                 $w($qb);
@@ -499,6 +500,7 @@ public function listByPlan(array $plan, $limit, $offset)
  */
 public function getUserSelectedColumns($menuId, $userId, $pkRequired = null)
 {
+
     $tUcd = $this->tbl('user_column_data'); // ab_user_column_data
 
     if (!$this->db->table_exists($tUcd)) {

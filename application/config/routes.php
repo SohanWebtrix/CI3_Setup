@@ -49,6 +49,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | Examples:	my-controller/index	-> my_controller/index
 |		my-controller/my-method	-> my_controller/my_method
 */
+
 $route['default_controller'] = 'welcome';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
@@ -59,6 +60,15 @@ $route['users/changeStatus'] = 'core/users/Users/changeStatus';
 $route['user/(:num)'] = 'core/users/Users/userDetails/$1';
 $route['changePassword'] = 'core/users/Users/confirm_password/';
 $route['user/add'] = 'core/users/Users/userDetails';
+$route['shop/add'] = 'core/users/Users/shopDetails';
 $route['user/edit/(:num)'] = 'core/users/Users/userDetails/$1';
-
+// $route['shop/add'] = 'core/shop/Shops/shopDetails';
+// $route['shop/list'] = 'core/shop/Shops/list';
+$route['shop/update']='core/shop/Shops/updateShop';
+$route['formconfig/save'] = 'core/formapi/Forms/saveDefinition';
+$route['form/submit'] = 'core/formapi/Forms/submit';
+$route['formconfig/form/(:any)'] = 'core/formapi/Forms/getForm/$1';
+$route['formconfig/form/(:any)/settings'] = 'core/formapi/Forms/updateSettings/$1';
+$route['formconfig/forms/last'] = 'core/formapi/Forms/getLastForm';
+$route['EmailsTemp/save'] = 'core/emailTemplate/EmailsTemp/saveEmail';
 
