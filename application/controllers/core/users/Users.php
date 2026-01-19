@@ -53,10 +53,6 @@ class Users extends CI_Controller
         if (!$this->config->item('development')) {
             // $this->load->library("Emails");
         }
-
-        //  $this->load->library('Response');
-        // $this->load->library('Access'); 
-        // $this->load->library("Datatables");
         $this->load->library("Filters");
     }
 
@@ -69,9 +65,9 @@ class Users extends CI_Controller
 
         log_message('error', 'PAYLOAD: ' . print_r($payload, true));
 
-        $menuId = (int)($payload['menuId'] ?? 0);
+        $menuId = (int)($payload['menuId'] ?? 138);
         if ($menuId <= 0) {
-            $this->response->output(['flag' => 'F', 'msg' => 'menuId is required', 'statusCode' => 422], 200);
+            $this->response->output(['flag' => 'F', 'msg' => 'menuId is required', 'statusCode' => 422], 200, 'json');
             return;
         }
 
@@ -82,7 +78,7 @@ class Users extends CI_Controller
         // Menu meta + PK
         $menuMeta = $this->Model->getMenuMeta($menuId);
         if (!$menuMeta) {
-            $this->response->output(['flag' => 'F', 'msg' => 'Invalid menu', 'statusCode' => 422], 200);
+            $this->response->output(['flag' => 'F', 'msg' => 'Invalid menu', 'statusCode' => 422], 200, 'json');
             return;
         }
         $pk = $menuMeta['pk'];
@@ -119,7 +115,7 @@ class Users extends CI_Controller
 
 
         //'completed_subtask_count','subtask_progress_percent'
-        $required = ['shop_name', 'shop_email', 'shop_owner', 'status', 'created_date'];
+        $required = ['tempID', 'tempUniqueID', 'tempName','rawObject','templateStyle','created_date','emailContent'];
         // Merge in correct order → Required first, then PK, then user columns
         $columns = array_unique(array_merge($required, $columns));
 
@@ -205,7 +201,7 @@ class Users extends CI_Controller
             $status['loadstate'] = true;
         }
 
-        $this->response->output($status, 200);
+        $this->response->output($status, 200, 'json');
     }
 
 
@@ -505,70 +501,7 @@ class Users extends CI_Controller
             $status['flag'] = 'S';
             $this->response->output($status, 200);
 
-            // $this->filters->_initialize('yes');
-            // $wherec = $join = array();
-            // $wherec = $this->whereData["wherec"];
-            // $other = $this->whereData["other"];
-            // $join = $this->whereData["join"];
-            // $selectC = $this->whereData["select"];	
-            // $wherec["t.adminID ="] = "'".$adminID."'";	
-            // if ($selectC != "") {
-            //     $selectC = "t.*,r.roleName," . $selectC;
-            // } else {
-            //     $selectC = "t.*,r.roleName," . $selectC;
-            // }
-            // $adminHistory = $this->CommonModel->GetMasterListDetails($selectC, $this->menuDetails->table_name, $wherec, '', '', $join, array());
-            // if (isset($adminHistory[0]->whatsappNo) && !empty($adminHistory[0]->whatsappNo)) {
-
-            //     $fullNumber = $adminHistory[0]->whatsappNo;
-            //     // Splitting the number into country code and mobile number
-            //     $numberParts = explode('-', $fullNumber);
-
-            //     if (count($numberParts) == 2) {
-            //         $countryCode = $numberParts[0]; // The country code part
-            //         $mobileNumber = $numberParts[1]; // The mobile number part
-
-            //         // Assigning the separated values
-            //         $adminHistory[0]->whatsappNo = $mobileNumber;
-            //         $adminHistory[0]->whatsappCountryCodeNumber = $countryCode;
-            //     } else {
-            //         // Handle cases where the format is not as expected
-            //         $adminHistory[0]->whatsappCountryCodeNumber = '';
-            //         $adminHistory[0]->whatsappNo = $fullNumber;
-            //     }
-            // }
-            // if (isset($adminHistory[0]->company_id) && !empty($adminHistory[0]->company_id)) {
-            //     $array = explode(",", $adminHistory[0]->company_id);
-            //     $companyNames = []; // Initialize an empty array to store the company names
-
-            //     foreach ($array as $value) {
-            //         $wherec = array();
-            //         $wherec["t.infoID"] = ' = "' . $value . '"';
-
-            //         // Fetch the company name based on the ID
-            //         $companyName = $this->CommonModel->GetMasterListDetails($selectC = 'companyName', 'info_settings', $wherec, '', '', $join = array(), $other = array());
-
-            //         if (!empty($companyName) && isset($companyName[0]->companyName)) {
-            //             $companyNames[] = $companyName[0]->companyName;
-            //         }
-            //     }
-
-            //     // Assign the company names array to the adminHistory object
-            //     $adminHistory[0]->companyNames = $companyNames;
-            // }
-            // $adminHistory[0]->companyNamesString = implode(", ", $adminHistory[0]->companyNames);
-            // if (isset($adminHistory) && !empty($adminHistory)) {
-            //     $status['data'] = $adminHistory;
-            //     $status['statusCode'] = 200;
-            //     $status['flag'] = 'S';
-            //     $this->response->output($status, 200);
-            // } else {
-            //     $status['msg'] = $this->systemmsg->getErrorCode(227);
-            //     $status['statusCode'] = 227;
-            //     $status['data'] = array();
-            //     $status['flag'] = 'F';
-            //     $this->response->output($status, 200);
-            // }
+           
         }
     }
 

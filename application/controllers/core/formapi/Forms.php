@@ -161,7 +161,9 @@ public function updateSettings($formId)
     }
 
     // Read JSON body
-    $payload = json_decode($this->input->raw_input_stream, true);
+    // $payload = json_decode($this->input->raw_input_stream, true);
+        $payload = $_POST;
+
 
     $patch   = $payload['patch'] ?? [];
 

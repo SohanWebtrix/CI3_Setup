@@ -94,3 +94,26 @@ $db['default'] = array(
 	'failover' => array(),
 	'save_queries' => TRUE
 );
+
+
+// $db['default'] = array(
+// 	'dsn'	=> '',
+// 	'hostname' => 'sql200.infinityfree.com',
+// 	'username' => 'if0_40923713',
+// 	'password' => 'auj6tvIubZ7c',
+// 	'database' => 'if0_40923713_Email_Template_DB',
+// 	'dbdriver' => 'mysqli',
+// 	'dbprefix' => 'ab_',
+// 	'pconnect' => FALSE,
+// 	'db_debug' => (ENVIRONMENT !== 'production'),
+// 	'cache_on' => FALSE,
+// 	'cachedir' => '',
+// 	'char_set' => 'utf8',
+// 	'dbcollat' => 'utf8_general_ci',
+// 	'swap_pre' => '',
+// 	'encrypt' => FALSE,
+// 	'compress' => FALSE,
+// 	'stricton' => FALSE,
+// 	'failover' => array(),
+// 	'save_queries' => TRUE
+// );

@@ -55,6 +55,8 @@ $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
 
 $route['users/list'] = 'core/users/Users/list';
+$route['emails/list'] = 'core/emailTemplate/EmailsTemp/list';
+
 $route['users/delete'] = 'core/users/Users/deleteUser';
 $route['users/changeStatus'] = 'core/users/Users/changeStatus';
 $route['user/(:num)'] = 'core/users/Users/userDetails/$1';
@@ -63,7 +65,7 @@ $route['user/add'] = 'core/users/Users/userDetails';
 $route['shop/add'] = 'core/users/Users/shopDetails';
 $route['user/edit/(:num)'] = 'core/users/Users/userDetails/$1';
 // $route['shop/add'] = 'core/shop/Shops/shopDetails';
-// $route['shop/list'] = 'core/shop/Shops/list';
+// $ro.................ute['shop/list'] = 'core/shop/Shops/list';
 $route['shop/update']='core/shop/Shops/updateShop';
 $route['formconfig/save'] = 'core/formapi/Forms/saveDefinition';
 $route['form/submit'] = 'core/formapi/Forms/submit';
@@ -71,4 +73,8 @@ $route['formconfig/form/(:any)'] = 'core/formapi/Forms/getForm/$1';
 $route['formconfig/form/(:any)/settings'] = 'core/formapi/Forms/updateSettings/$1';
 $route['formconfig/forms/last'] = 'core/formapi/Forms/getLastForm';
 $route['EmailsTemp/save'] = 'core/emailTemplate/EmailsTemp/saveEmail';
+$route['EmailsTemp/update/(:any)'] = 'core/emailTemplate/EmailsTemp/updateTemplate/$1';
+$route['EmailsTemp/deleteEmailTemplate/(:any)'] = 'core/emailTemplate/EmailsTemp/deleteEmailTemplate/$1';
+$route['emailTemplate/get/(:any)'] = 'core/emailTemplate/EmailsTemp/getTemplate/$1';
+
 

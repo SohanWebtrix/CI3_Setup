@@ -21,10 +21,10 @@ class FormConfig_Model extends CI_Model
         //     ->row();
 
         $existing = $this->CommonModel->getMasterDetails(
-    $this->table,
-    'form_id',
-    ['form_id' => $data['form_id']]
-);
+         $this->table,
+       'form_id',
+      ['form_id' => $data['form_id']]
+      );
 
         if ($existing) {
             // UPDATE

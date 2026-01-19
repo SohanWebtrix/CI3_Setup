@@ -85,26 +85,64 @@ class Response
 		* param    		: $data,$statusCode,$type
 		* Description 	: This function determine the request type and as per the request type it will send the result to the end user.
 		*/
-	public function output($data = array(), $statusCode = '', $type = '')
-	{
+	// public function output($data = array(), $statusCode = '', $type = '')
+	// {
 
-		if (!empty($type)) {
+	// 	if (!empty($type)) {
+	// 		$format = $type;
+	// 	} else {
+	// 		$format = $this->outputType;
+	// 	}
+
+	// 	      log_message('error', 'Accept header (requestContentType): ' . ($this->requestContentType ?? 'NULL'));
+    //       log_message('error', 'Resolved output format: ' . $format);
+    //         log_message('error', 'Response data: ' . print_r($data, true));
+
+	// 	$checkRequestFrom = $this->checkRequestType($this->requestContentType);
+		
+	// 	if (!$checkRequestFrom) {
+	// 		return false;
+	// 	}
+
+	// 	    log_message('error', 'checkRequestType result: ' . ($checkRequestFrom ? 'TRUE' : 'FALSE'));
+
+
+	// 	$this->setHttpHeaders($this->requestContentType, $statusCode);
+	// 	$this->CI->load->library("outputFormats/" . $format);
+	// 	$this->$format = new $format();
+	// 	$this->$format->senddata($this->requestContentType, $data);
+	// }
+
+	public function output($data = array(), $statusCode = '', $type = '')
+{
+if (!empty($type)) {
 			$format = $type;
 		} else {
 			$format = $this->outputType;
 		}
 
-		$checkRequestFrom = $this->checkRequestType($this->requestContentType);
+ $checkRequestFrom = $this->checkRequestType($this->requestContentType);
 		
 		if (!$checkRequestFrom) {
 			return false;
 		}
-		
-		$this->setHttpHeaders($this->requestContentType, $statusCode);
-		$this->CI->load->library("outputFormats/" . $format);
-		$this->$format = new $format();
-		$this->$format->senddata($this->requestContentType, $data);
-	}
+    log_message('error', 'checkRequestType result: TRUE');
+
+    // ✅ FIXED CONTENT-TYPE
+    $contentType = 'application/json';
+    if ($format === 'xml') {
+        $contentType = 'application/xml';
+    } elseif ($format === 'html') {
+        $contentType = 'text/html';
+    }
+
+    $this->setHttpHeaders($contentType, $statusCode);
+
+    $this->CI->load->library("outputFormats/" . $format);
+    $this->$format = new $format();
+    $this->$format->senddata($contentType, $data);
+}
+
 	/*
 		* function  	: checkRequestType
 		* param    		: 
